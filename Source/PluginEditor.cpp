@@ -61,13 +61,15 @@ PlanetEditor::PlanetEditor(PlanetProcessor& p):AudioProcessorEditor(p),processor
  makeChoice(mode,"mode",5); makeChoice(wave,"wave",3);
  for(int i=0;i<4;++i) harmony.addItem((juce::StringArray{"Nearest quarter tone","A minor pentatonic","A major","Open fifths"})[i],i+1);
  addAndMakeVisible(harmony);choices.push_back(std::make_unique<ChoiceAttachment>(st,"harmony",harmony));
+ bendRange.addItem("+/- 2 semitones",1); bendRange.addItem("+/- 12 semitones",2);
+ addAndMakeVisible(bendRange);choices.push_back(std::make_unique<ChoiceAttachment>(st,"bendrange",bendRange));
  for(int i=0;i<4;++i) spinNumber.addItem((juce::StringArray{"CC 1 Mod wheel","CC 11 Expression","CC 74 Brightness","CC 71 Resonance"})[i],i+1);
  addAndMakeVisible(spinNumber); choices.push_back(std::make_unique<ChoiceAttachment>(st,"spinccnum",spinNumber));
  auto makeSlider=[&](juce::Slider& s,const juce::String& id){s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,63,22);addAndMakeVisible(s);sliders.push_back(std::make_unique<SliderAttachment>(st,id,s));};
  makeSlider(pull,"pull");makeSlider(keplerGlide,"keplerGlide");
  makeSlider(earth,"earth");earth.setVisible(false);makeSlider(year,"year");makeSlider(depth,"depth");makeSlider(ellipse,"ellipse");makeSlider(gain,"gain");makeSlider(duty,"duty");
  for(auto* pair : {&audio,&midi,&bend,&gate,&spinCC,&orbitCC11,&orbitCC10}) {addAndMakeVisible(*pair);}
- audio.setButtonText("Internal audio");midi.setButtonText("MIDI output");bend.setButtonText("Microtonal pitch bend");gate.setButtonText("4 beats per orbit");spinCC.setButtonText("Rotation CC");orbitCC11.setButtonText("Orbital distance -> CC11");orbitCC10.setButtonText("Orbital position -> CC10");
+ audio.setButtonText("Internal audio");midi.setButtonText("MIDI output");bend.setButtonText("Pitch bend: orbit -> pitch");gate.setButtonText("4 beats per orbit");spinCC.setButtonText("Rotation CC");orbitCC11.setButtonText("Orbital distance -> CC11");orbitCC10.setButtonText("Orbital position -> CC10");
  buttons.push_back(std::make_unique<ButtonAttachment>(st,"audio",audio));buttons.push_back(std::make_unique<ButtonAttachment>(st,"midi",midi));buttons.push_back(std::make_unique<ButtonAttachment>(st,"bend",bend));buttons.push_back(std::make_unique<ButtonAttachment>(st,"gate",gate));buttons.push_back(std::make_unique<ButtonAttachment>(st,"spincc",spinCC));
  buttons.push_back(std::make_unique<ButtonAttachment>(st,"orbitcc11",orbitCC11));
  buttons.push_back(std::make_unique<ButtonAttachment>(st,"orbitcc10",orbitCC10));
@@ -92,6 +94,7 @@ void PlanetEditor::paint(juce::Graphics& g)
  g.drawText("KEPLER HARMONY - 24-TONE RETUNING",20,858,380,22,juce::Justification::centredLeft);
  g.drawText("Harmonic pull",275,880,108,27,juce::Justification::centredLeft);
  g.drawText("Angular-speed glide",260,924,125,27,juce::Justification::centredLeft);
+ g.drawText("Bend range (match synth)",735,920,205,27,juce::Justification::centredLeft);
  g.setColour(juce::Colours::lightgrey.withAlpha(.6f));g.setFont(12.f);
  g.drawText("ARTISTIC TUNING: real orbital data unchanged",20,958,650,24,juce::Justification::centredLeft);
  g.setColour(juce::Colour(0xffa8c1df));g.setFont(14.f);
@@ -108,7 +111,7 @@ void PlanetEditor::resized()
  mode.setBounds(20,667,235,30);wave.setBounds(266,667,128,30);
  gate.setBounds(20,745,180,25);spinCC.setBounds(205,745,160,25);spinNumber.setBounds(370,742,190,30);duty.setBounds(20,778,335,28);
  orbitCC11.setBounds(20,825,245,27);orbitCC10.setBounds(277,825,245,27);
- harmony.setBounds(20,880,245,30); pull.setBounds(385,880,335,28);keplerGlide.setBounds(385,924,335,28);
+ harmony.setBounds(20,880,245,30); pull.setBounds(385,880,335,28);keplerGlide.setBounds(385,924,335,28); bendRange.setBounds(945,920,185,30);
  audio.setBounds(20,708,135,24);midi.setBounds(160,708,130,24);bend.setBounds(295,708,225,24);
  for(int i=0;i<8;++i){const int y=151+i*48;planetName[i].setBounds(584,y,110,30);enabled[i].setBounds(704,y,70,30);channel[i].setBounds(788,y,100,30);level[i].setBounds(900,y,132,30);}
  const std::array<juce::Slider*,5> ss{&earth,&year,&depth,&ellipse,&gain};

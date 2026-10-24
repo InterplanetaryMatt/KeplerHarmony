@@ -37,7 +37,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PlanetProcessor::makeParamet
  p.push_back(std::make_unique<F>(juce::ParameterID{"duty",1},"Pulse length (% of beat)",juce::NormalisableRange<float>(5.f,95.f,1.f),45.f));
  p.push_back(std::make_unique<B>(juce::ParameterID{"spincc",1},"Rotation MIDI CC",true));
  p.push_back(std::make_unique<C>(juce::ParameterID{"spinccnum",1},"Rotation CC number",juce::StringArray{"CC 1 Mod wheel","CC 11 Expression","CC 74 Brightness","CC 71 Resonance"},2));
- p.push_back(std::make_unique<B>(juce::ParameterID{"bend",1},"Microtonal pitch bend",false));
+ p.push_back(std::make_unique<B>(juce::ParameterID{"bend",1},"Microtonal pitch bend",true));
+ p.push_back(std::make_unique<C>(juce::ParameterID{"bendrange",1},"Pitch-bend range",juce::StringArray{"+/- 2 semitones","+/- 12 semitones"},1));
  p.push_back(std::make_unique<B>(juce::ParameterID{"orbitcc11",1},"Orbital distance to CC11",true));
  p.push_back(std::make_unique<B>(juce::ParameterID{"orbitcc10",1},"Orbital position to CC10",true));
  for(int i=0;i<8;++i)
@@ -85,6 +86,7 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
  const int wave=(int)param(parameters,"wave");
  const bool audio=param(parameters,"audio")>0.5f, sendMidi=param(parameters,"midi")>0.5f;
  const bool bending=param(parameters,"bend")>0.5f;
+ const double bendRange=(param(parameters,"bendrange")>0.5f ? 12.0 : 2.0);
  const bool orbitCC11=param(parameters,"orbitcc11")>0.5f;
  const bool orbitCC10=param(parameters,"orbitcc10")>0.5f;
  const bool rhythm=param(parameters,"gate")>0.5f;
@@ -168,8 +170,12 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   const int channel=1+(int)parameters.getRawParameterValue("ch"+id)->load();
   const int note=juce::jlimit(0,127,(int)std::lround(69+12*std::log2(f/440.0)));
   const bool wants=sendMidi && enabled && referenceNote>=0 && pulseOn;
-  if(activeNote[i]>=0 && (!wants || activeNote[i]!=note || activeChannel[i]!=channel || wasSending!=sendMidi))
-  { midi.addEvent(juce::MidiMessage::noteOff(activeChannel[i],activeNote[i]),0); activeNote[i]=-1; }
+  // In Kepler mode pin the note while pitch wheel carries orbital velocity.
+  // MIDI 1.0 bend is channel-wide, so each planet needs a separate channel.
+  const bool sustainedBend = (mode==4 && bending);
+  const int targetNote = (sustainedBend && activeNote[i]>=0) ? activeNote[i] : note;
+  if(activeNote[i]>=0 && (!wants || (!sustainedBend && activeNote[i]!=note) || activeChannel[i]!=channel || wasSending!=sendMidi))
+  { midi.addEvent(juce::MidiMessage::noteOff(activeChannel[i],activeNote[i]),0); midi.addEvent(juce::MidiMessage::pitchWheel(activeChannel[i],8192),0); activeNote[i]=-1; }
   // Independent orbital controllers are not tied to tuning mode, pitch bend,
   // or the four-note rhythmic gate. Keep them flowing between note pulses.
   // CC11: proximity to Sun (0 farthest, 127 nearest) with depth control.
@@ -204,7 +210,7 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   if(mode==4 && bending && wants && activeNote[i]>=0 && sendCCThisBlock)
   {
    const double semis=69+12*std::log2(f/440.0);
-   const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-note)*(8192.0/2.0)));
+   const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-targetNote)*(8192.0/bendRange)));
    midi.addEvent(juce::MidiMessage::pitchWheel(channel,pb),0);
   }
   if(wants && activeNote[i]<0)
@@ -212,7 +218,7 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    if(bending)
    {
     const double semis=69+12*std::log2(f/440.0);
-    const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-note)*(8192.0/2.0)));
+    const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-note)*(8192.0/bendRange)));
     midi.addEvent(juce::MidiMessage::pitchWheel(channel,pb),0);
    }
    midi.addEvent(juce::MidiMessage::noteOn(channel,note,(juce::uint8)96),0);

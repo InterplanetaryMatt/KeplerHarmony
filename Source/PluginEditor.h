@@ -27,7 +27,7 @@ private:
  OrbitDisplay orbits;
  juce::Label title, subtitle;
  juce::Image podcastLogo;
- juce::ComboBox mode, wave, spinNumber, harmony;
+ juce::ComboBox mode, wave, spinNumber, harmony, bendRange;
  juce::Slider earth, year, depth, ellipse, gain, duty, pull, keplerGlide;
  juce::ToggleButton audio, midi, bend, gate, spinCC, orbitCC11, orbitCC10;
  std::array<juce::ComboBox,8> channel;
