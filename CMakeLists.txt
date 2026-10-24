@@ -21,4 +21,13 @@ juce_add_binary_data(InterplanetaryBranding
 juce_generate_juce_header(KeplerHarmony)
 target_sources(KeplerHarmony PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/PluginEditor.cpp Source/PluginEditor.h)
 target_compile_definitions(KeplerHarmony PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
-target_link_libraries(KeplerHarmony) PRIVATE InterplanetaryBranding juce::juce_audio_utils juce::juce_audio_processors juce::juce_dsp PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+target_link_libraries(KeplerHarmony
+    PRIVATE
+        InterplanetaryBranding
+        juce::juce_audio_utils
+        juce::juce_audio_processors
+        juce::juce_dsp
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+)
