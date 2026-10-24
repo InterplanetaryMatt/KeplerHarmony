@@ -1,8 +1,10 @@
 name: Build Windows and macOS plug-ins
+
 on:
   workflow_dispatch:
   push:
     branches: [main]
+
 jobs:
   build:
     strategy:
@@ -11,18 +13,33 @@ jobs:
         include:
           - os: windows-2022
             name: windows
-          - os: macos-14
-            name: macos
+          - os: macos-15-intel
+            name: macos-intel
     runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
-      - name: Configure
+
+      - name: Configure Windows
+        if: runner.os == 'Windows'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure macOS Intel (Ventura 13+)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64
+
       - name: Build
         run: cmake --build build --config Release --parallel 3
+
       - uses: actions/upload-artifact@v4
         with:
           name: kepler-harmony-${{ matrix.name }}
+          if-no-files-found: error
           path: |
             build/KeplerHarmony_artefacts/Release/VST3/**
             build/KeplerHarmony_artefacts/VST3/**
