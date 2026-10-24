@@ -46,6 +46,11 @@ void OrbitDisplay::paint(juce::Graphics& g)
    "EARTH: " + juce::MidiMessage::getMidiNoteName(played,true,true,3) +
    "  /  " + juce::String(juce::MidiMessage::getMidiNoteInHertz(played),1) + " Hz";
  g.drawFittedText(noteMessage,bounds.toNearestInt().removeFromTop(31),juce::Justification::centred,1);
+ const int mw=processor.getMercuryPitchWheel();
+ g.setColour(juce::Colour(0xfff2c17b));g.setFont(12.f);
+ g.drawFittedText(mw<0 ? "MERCURY PITCH BEND: INACTIVE" :
+   "MERCURY MIDI PITCH BEND: " + juce::String(mw) + " / 16383",
+   juce::Rectangle<int>((int)bounds.getX()+20,(int)bounds.getY()+38,(int)bounds.getWidth()-40,22),juce::Justification::centred,1);
  g.setColour(juce::Colours::white.withAlpha(.65f));g.setFont(13.f);
  g.drawFittedText("4 beats per orbit  |  Planet rotation to MIDI CC  |  Orbits not to scale",bounds.toNearestInt().removeFromBottom(24),juce::Justification::centred,1);
 }

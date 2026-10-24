@@ -19,3 +19,12 @@ This update lets a planet's changing **angular speed** drive continuous MIDI pit
 ## Source build
 
 Upload the updated project files to GitHub, keeping `.github/workflows/build.yml`. Download artifacts from the successful Actions build. This revision has been source-checked but NOT compiled/tested with Roland/REAPER here.
+
+
+## v0.7.4 Pitch-bend diagnostics
+
+In Kepler harmony mode, with MIDI output and Pitch bend enabled, and four-pulses-per-orbit OFF, hold a MIDI key. The orbital display now shows `MERCURY MIDI PITCH BEND: n / 16383`. This must change with simulated orbital position. Values near 8192 are neutral.
+
+REAPER test: insert Kepler Harmony then **ReaControlMIDI** after it in the same FX chain; enable its MIDI activity log to check `Pitch Wheel` events on Mercury's chosen MIDI channel. The subsequent Roland synth must match the selected +/-12 semitone pitch-bend sensitivity. If the on-screen value changes but the log doesn't, inspect plug-in MIDI output forwarding in REAPER and ensure the VST3 compiled version is refreshed. If the log changes and sound doesn't, inspect the synth's pitch-bend routing.
+
+Version is a source patch, not yet compiled or verified in REAPER.

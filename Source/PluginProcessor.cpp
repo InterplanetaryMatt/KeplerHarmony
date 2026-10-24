@@ -51,7 +51,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PlanetProcessor::makeParamet
  return {p.begin(),p.end()};
 }
 PlanetProcessor::PlanetProcessor(): AudioProcessor(BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)),parameters(*this,nullptr,"PARAMETERS",makeParameters()) {activeNote.fill(-1); activeChannel.fill(1);}
-void PlanetProcessor::prepareToPlay(double sr,int) {sampleRateHz=sr;phase.fill(0);smoothLevel.fill(0); activeNote.fill(-1);activeChannel.fill(1);heldNotes.fill(false);noteOrder.fill(0);lastExpression.fill(-1);lastPan.fill(-1);nextNoteOrder=0;referenceNote=-1;displayedNote.store(-1);ccElapsed=0;elapsedSeconds=0;orbitTime.store(0);wasSending=false;}
+void PlanetProcessor::prepareToPlay(double sr,int) {sampleRateHz=sr;phase.fill(0);smoothLevel.fill(0); activeNote.fill(-1);activeChannel.fill(1);heldNotes.fill(false);noteOrder.fill(0);lastExpression.fill(-1);lastPan.fill(-1);nextNoteOrder=0;referenceNote=-1;displayedNote.store(-1);ccElapsed=0;bendElapsed=0;lastWheel.fill(-1);mercuryWheel.store(-1);elapsedSeconds=0;orbitTime.store(0);wasSending=false;}
 void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi)
 {
  juce::ScopedNoDenormals noDenormals;
@@ -96,6 +96,9 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
  ccElapsed+=(double)n/sampleRateHz;
  const bool sendCCThisBlock=ccElapsed>=0.005;
  if(sendCCThisBlock) ccElapsed=0;
+ bendElapsed+=(double)n/sampleRateHz;
+ const bool sendBendThisBlock=bendElapsed>=0.01;
+ if(sendBendThisBlock) bendElapsed=0;
  std::array<double,8> frequency{},amplitude{},pan{};
  for(int i=0;i<8;++i)
  {
@@ -175,7 +178,7 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   const bool sustainedBend = (mode==4 && bending);
   const int targetNote = (sustainedBend && activeNote[i]>=0) ? activeNote[i] : note;
   if(activeNote[i]>=0 && (!wants || (!sustainedBend && activeNote[i]!=note) || activeChannel[i]!=channel || wasSending!=sendMidi))
-  { midi.addEvent(juce::MidiMessage::noteOff(activeChannel[i],activeNote[i]),0); midi.addEvent(juce::MidiMessage::pitchWheel(activeChannel[i],8192),0); activeNote[i]=-1; }
+  { midi.addEvent(juce::MidiMessage::noteOff(activeChannel[i],activeNote[i]),0); midi.addEvent(juce::MidiMessage::pitchWheel(activeChannel[i],8192),0); activeNote[i]=-1; lastWheel[i]=-1; if(i==0)mercuryWheel.store(-1); }
   // Independent orbital controllers are not tied to tuning mode, pitch bend,
   // or the four-note rhythmic gate. Keep them flowing between note pulses.
   // CC11: proximity to Sun (0 farthest, 127 nearest) with depth control.
@@ -207,11 +210,18 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    const int spinValue=juce::jlimit(0,127,(int)std::lround(63.5+63.5*std::sin(2*pi*spinTurns)));
    midi.addEvent(juce::MidiMessage::controllerEvent(channel,spinNumber,spinValue),0);
   }
-  if(mode==4 && bending && wants && activeNote[i]>=0 && sendCCThisBlock)
+  // Send continuous orbital pitch wheel independently of CC10/CC11 throttling.
+  // The played note stays fixed; the wheel follows the true Kepler angular speed.
+  if(mode==4 && bending && wants && activeNote[i]>=0 && sendBendThisBlock)
   {
    const double semis=69+12*std::log2(f/440.0);
-   const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-targetNote)*(8192.0/bendRange)));
-   midi.addEvent(juce::MidiMessage::pitchWheel(channel,pb),0);
+   const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-activeNote[i])*(8192.0/bendRange)));
+   if(lastWheel[i]<0 || std::abs(pb-lastWheel[i])>=2)
+   {
+    midi.addEvent(juce::MidiMessage::pitchWheel(channel,pb),0);
+    lastWheel[i]=pb;
+   }
+   if(i==0) mercuryWheel.store(pb,std::memory_order_relaxed);
   }
   if(wants && activeNote[i]<0)
   {
@@ -220,6 +230,7 @@ void PlanetProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
     const double semis=69+12*std::log2(f/440.0);
     const int pb=juce::jlimit(0,16383,(int)std::lround(8192+(semis-note)*(8192.0/bendRange)));
     midi.addEvent(juce::MidiMessage::pitchWheel(channel,pb),0);
+    lastWheel[i]=pb; if(i==0) mercuryWheel.store(pb,std::memory_order_relaxed);
    }
    midi.addEvent(juce::MidiMessage::noteOn(channel,note,(juce::uint8)96),0);
    activeNote[i]=note; activeChannel[i]=channel;

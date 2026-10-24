@@ -26,6 +26,7 @@ public:
  juce::AudioProcessorValueTreeState parameters;
  double getOrbitTime() const noexcept { return orbitTime.load(std::memory_order_relaxed); }
  int getReferenceMidiNote() const noexcept { return displayedNote.load(std::memory_order_relaxed); }
+ int getMercuryPitchWheel() const noexcept { return mercuryWheel.load(std::memory_order_relaxed); }
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout makeParameters();
  std::array<double,8> phase{};
@@ -34,7 +35,9 @@ private:
  unsigned long long nextNoteOrder=0;
  int referenceNote=-1;
  std::array<int,8> lastExpression{}, lastPan{};
- double ccElapsed=0;
+ double ccElapsed=0, bendElapsed=0;
+ std::array<int,8> lastWheel{};
+ std::atomic<int> mercuryWheel{-1};
  std::atomic<int> displayedNote{-1};
  std::array<int,8> activeNote{};
  std::array<int,8> activeChannel{};
